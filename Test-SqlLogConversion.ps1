@@ -37,4 +37,15 @@ foreach ($invalidLog in '', 'DEBUG - unrelated log', ($log + [Environment]::NewL
     }
 }
 
-Write-Output 'Passed 6 CLI checks.'
+$paddedLog = @"
+DEBUG - PreparedStatement : [select @param0, @param1, @param2, @param3, @param4, @param5]
+DEBUG - Parameters: [@param0=[NAME,  O'Brien  ], @param1=[NAME,   ], @param2=[NAME,], @param3=[ID,  42  ], @param4=[NAME,  abc  ], @param5=[DATE,  2026-11-14  ]]
+DEBUG - Types: [@param0=[String, System.String], @param1=[System.String, System.String], @param2=[String, System.String], @param3=[Int32, System.Int32], @param5=[DateTime, System.DateTime]]
+"@
+$expectedPaddedSql = "select '  O''Brien  ', '   ', '', 42, 'abc', '2026-11-14'"
+$sql = $paddedLog | dotnet $app
+if ($LASTEXITCODE -ne 0 -or $sql -cne $expectedPaddedSql) {
+    throw "Expected only String parameters to retain outer whitespace. Actual: [$sql]"
+}
+
+Write-Output 'Passed 7 CLI checks.'

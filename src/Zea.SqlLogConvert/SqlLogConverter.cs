@@ -114,7 +114,7 @@ internal static class SqlLogConverter
                 raw = raw.Substring(separator + 1);
             }
 
-            sink[entry.Groups[1].Value] = raw.Trim();
+            sink[entry.Groups[1].Value] = raw;
         }
     }
 
@@ -135,6 +135,14 @@ internal static class SqlLogConverter
 
     private static string RenderValue(string value, string? paramType)
     {
+        if (paramType is "string" or "system.string")
+        {
+            var quotedString = Quote(value);
+            return quotedString;
+        }
+
+        value = value.Trim();
+
         // System.DBNull always maps to SQL NULL regardless of value.
         if (string.Equals(paramType, "system.dbnull", StringComparison.OrdinalIgnoreCase))
         {
