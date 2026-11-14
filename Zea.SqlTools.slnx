@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Zea.SqlFormat/Zea.SqlFormat.csproj" />
+  <Project Path="src/Zea.SqlLogConvert/Zea.SqlLogConvert.csproj" />
+</Solution>

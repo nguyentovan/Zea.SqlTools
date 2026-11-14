@@ -1,13 +1,13 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
-$project = Join-Path $PSScriptRoot 'Zea.SqlLogConvert.csproj'
+$project = Join-Path $PSScriptRoot 'src/Zea.SqlLogConvert/Zea.SqlLogConvert.csproj'
 dotnet build $project --nologo
 if ($LASTEXITCODE -ne 0) {
     throw 'Build failed.'
 }
 
-$app = Join-Path $PSScriptRoot 'bin/Debug/net10.0/Zea.SqlLogConvert.dll'
+$app = Join-Path $PSScriptRoot 'src/Zea.SqlLogConvert/bin/Debug/net10.0/Zea.SqlLogConvert.dll'
 $log = @"
 DEBUG - PreparedStatement : [select @param0, @PARAM1, @param10]
 DEBUG - Parameters: [@param0=[NAME,O'Brien], @param1=[ID,42], @param10=[DELETED_AT,null]]
