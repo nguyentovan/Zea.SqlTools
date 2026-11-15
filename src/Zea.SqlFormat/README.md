@@ -62,4 +62,4 @@ command exits with code 1 when a check fails.
 
 Zea vendors the core library from [Right Way SQL Formatter](https://github.com/BadMonkeySoftware/right-way-sql-formatter), based on Poor Man's T-SQL Formatter by Tao Klerks. The vendored files retain their original notices and are licensed under the [GNU Affero General Public License v3](Formatters/RightWay/LICENSE.txt).
 
-SQLFluff parses every CLI dialect, including T-SQL. SqlFluffTreeAdapter converts the parse tree for RightWayFormatter. The SQL Server keyword table supplies formatting metadata for built-in function casing and identifier checks.
+Zea uses [SQLFluff 4.5.0](https://github.com/sqlfluff/sqlfluff/tree/4.5.0) to parse every CLI dialect, including T-SQL, and extends several of its dialect grammars. SQLFluff is distributed under the [MIT license](licenses/SQLFluff.txt). SqlFluffTreeAdapter converts the parse tree for RightWayFormatter. The SQL Server keyword table supplies formatting metadata for built-in function casing and identifier checks.
