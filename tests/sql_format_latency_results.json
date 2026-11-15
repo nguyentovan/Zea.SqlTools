@@ -1,0 +1,142 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "method": "Elapsed wall time per CLI invocation, including stdin/stdout. Each pair uses a new empty .NET bundle extraction directory, then immediately reuses it. The OS caches are not flushed. Baseline and candidate order alternates.",
+  "artifacts": {
+    "baseline": {
+      "path": "D:\\Documents\\WORKSPACE\\Zea.SqlTools\\obj\\portable\\latency-baseline\\Zea.SqlFormat.exe",
+      "bytes": 53441551,
+      "sha256": "01a0bc773e89375a739fe341234f2f5f9120f77554054612458a54147d8e5a48",
+      "embedded_dll_sha256": "af72f57d50413fc75b8c75e2baa8274d1bf3270a73baf66dea697b7b3c1547d7",
+      "bridge_sha256": "7f3fdf3bf3263e9bb187d925bdd6e9af059305f3d7c5b82560ff09c4121d8cff",
+      "python": "3.13.14",
+      "sqlfluff": "4.5.0",
+      "package_pyc_files": 0
+    },
+    "candidate": {
+      "path": "D:\\Documents\\WORKSPACE\\Zea.SqlTools\\obj\\portable\\win-x64\\Zea.SqlFormat.exe",
+      "bytes": 58446828,
+      "sha256": "54c06a562d4252fc669f75752c6d39001e1884c5312fc0dbcbf3338de6470099",
+      "embedded_dll_sha256": "bf3259c656d61539990981b95f1837b8fb3d8debc6f0f12b851734ed7897a464",
+      "bridge_sha256": "bc297a2cbee16f3bfd115e96bec8d1ac1ba1dcca13db293e887bffb3e7e8323a",
+      "python": "3.13.14",
+      "sqlfluff": "4.5.0",
+      "package_pyc_files": 830
+    }
+  },
+  "workloads": {
+    "tsql": {
+      "sql": "select id,name from dbo.Users where id=1",
+      "results": {
+        "baseline": {
+          "fresh_extraction": {
+            "samples_ms": [
+              2423.0,
+              2417.7,
+              2366.3,
+              2441.4,
+              2487.0,
+              2428.7,
+              2399.2
+            ],
+            "median_ms": 2423.0
+          },
+          "reused_extraction": {
+            "samples_ms": [
+              1375.0,
+              1387.9,
+              1388.9,
+              1420.0,
+              1440.2,
+              1418.7,
+              1421.8
+            ],
+            "median_ms": 1418.7
+          }
+        },
+        "candidate": {
+          "fresh_extraction": {
+            "samples_ms": [
+              1804.2,
+              1813.0,
+              1815.4,
+              1867.2,
+              1948.5,
+              1875.4,
+              1832.9
+            ],
+            "median_ms": 1832.9
+          },
+          "reused_extraction": {
+            "samples_ms": [
+              513.2,
+              503.1,
+              500.3,
+              518.5,
+              532.9,
+              517.4,
+              510.4
+            ],
+            "median_ms": 513.2
+          }
+        }
+      }
+    },
+    "postgres": {
+      "sql": "select 1::int,2 limit 3",
+      "results": {
+        "baseline": {
+          "fresh_extraction": {
+            "samples_ms": [
+              2436.4,
+              2451.6,
+              2421.4,
+              2487.0,
+              2413.2,
+              2440.4,
+              2424.0
+            ],
+            "median_ms": 2436.4
+          },
+          "reused_extraction": {
+            "samples_ms": [
+              1393.1,
+              1388.6,
+              1398.1,
+              1404.4,
+              1435.8,
+              1390.8,
+              1395.9
+            ],
+            "median_ms": 1395.9
+          }
+        },
+        "candidate": {
+          "fresh_extraction": {
+            "samples_ms": [
+              1851.9,
+              1840.2,
+              1866.9,
+              1903.5,
+              1828.7,
+              1859.3,
+              1859.8
+            ],
+            "median_ms": 1859.3
+          },
+          "reused_extraction": {
+            "samples_ms": [
+              511.1,
+              495.8,
+              524.7,
+              500.2,
+              499.4,
+              492.2,
+              518.1
+            ],
+            "median_ms": 500.2
+          }
+        }
+      }
+    }
+  }
+}

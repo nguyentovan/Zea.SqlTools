@@ -8,7 +8,8 @@ internal static class SqlFormatter
     public static string FormatSql(string sql, string dialect)
     {
         bool useTsqlFormattingRules = dialect == "tsql";
-        var tree = SqlFluffParser.Parse(sql, dialect);
+        using var parser = new SqlFluffParser(dialect);
+        var tree = parser.Parse(sql);
         if (tree.Kind == "verbatim_sqlite")
         {
             return sql;
@@ -16,7 +17,7 @@ internal static class SqlFormatter
 
         Node Reparse(string formatted)
         {
-            var parsed = SqlFluffParser.Parse(formatted, dialect);
+            var parsed = parser.Parse(formatted);
             var converted = SqlFluffTreeAdapter.Convert(parsed, useTsqlFormattingRules);
             return converted;
         }
@@ -29,7 +30,7 @@ internal static class SqlFormatter
 
         if (!string.Equals(sql, result, StringComparison.Ordinal))
         {
-            var reparsed = SqlFluffParser.Parse(result, dialect);
+            var reparsed = parser.Parse(result);
             SqlFluffTreeAdapter.CheckEquivalent(tree, reparsed, useTsqlFormattingRules);
         }
 

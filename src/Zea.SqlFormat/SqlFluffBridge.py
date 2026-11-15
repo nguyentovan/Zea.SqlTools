@@ -337,26 +337,13 @@ def invalid_implicit_execute(tree):
     return None
 
 
-def main():
-    if sys.argv[1] == "--dialects":
-        print(json.dumps([dialect.label for dialect in dialect_readout()]))
-        return 0
-
-    dialect = sys.argv[2]
-    try:
-        config = FluffConfig(overrides={"dialect": dialect, "templater": "raw"})
-    except (KeyError, SQLFluffUserError):
-        print(f"Unsupported SQL dialect: {dialect}", file=sys.stderr)
-        return 2
-
+def extend_dialect(dialect, dialect_obj):
     if dialect == "tsql":
-        # The dialect object is process-local to the bridge invocation.
-        extend_tsql(config.get("dialect_obj"))
+        extend_tsql(dialect_obj)
     elif dialect == "postgres":
-        keep_block_comments_together(config.get("dialect_obj"))
+        keep_block_comments_together(dialect_obj)
     elif dialect in ("mysql", "oracle", "sqlite"):
         # These dialects inherit the ANSI parser's PostgreSQL-style cast rule.
-        dialect_obj = config.get("dialect_obj")
         dialect_obj.replace(ShorthandCastSegment=Nothing())
         keep_block_comments_together(dialect_obj)
         if dialect == "mysql":
@@ -373,53 +360,50 @@ def main():
 
             dialect_obj.replace(ExplainStatementSegment=ExplainStatementSegment)
 
-    # Read bytes directly so universal newline handling doesn't change literals.
-    sql = sys.stdin.buffer.read().decode("utf-8")
+
+def parse_sql(sql, dialect, config):
     if not sql.strip():
-        print("Input does not contain any SQL.", file=sys.stderr)
-        return 1
+        return {"exitCode": 1, "diagnostic": "Input does not contain any SQL."}
 
     tokens, errors = Lexer(config=config).lex(sql)
     if errors:
-        for error in errors:
-            print(f"Line {error.line_no}, column {error.line_pos}: {error}", file=sys.stderr)
-        return 1
+        diagnostic = "\n".join(
+            f"Line {error.line_no}, column {error.line_pos}: {error}" for error in errors
+        )
+        return {"exitCode": 1, "diagnostic": diagnostic}
 
     configure_parser_limits(config, len(tokens))
     try:
         tree = Parser(config=config).parse(tokens)
     except SQLParseError as error:
-        print(error, file=sys.stderr)
-        return 1
+        return {"exitCode": 1, "diagnostic": str(error)}
     except RecursionError:
-        print("SQL nesting exceeds the parser stack limit.", file=sys.stderr)
-        return 1
+        return {"exitCode": 1, "diagnostic": "SQL nesting exceeds the parser stack limit."}
 
     if tree is None:
-        print("Input does not contain any SQL.", file=sys.stderr)
-        return 1
+        return {"exitCode": 1, "diagnostic": "Input does not contain any SQL."}
 
     unparsable = list(tree.iter_unparsables())
     if unparsable:
+        diagnostics = []
         for segment in unparsable:
             line, column = segment.pos_marker.source_position()
-            print(f"Line {line}, column {column}: {segment.raw[:100]!r}", file=sys.stderr)
-        return 1
+            diagnostics.append(f"Line {line}, column {column}: {segment.raw[:100]!r}")
+        return {"exitCode": 1, "diagnostic": "\n".join(diagnostics)}
 
     if dialect == "tsql":
         invalid_call = invalid_implicit_execute(tree)
         if invalid_call is not None:
             segment, message = invalid_call
             line, column = segment.pos_marker.source_position()
-            print(f"Line {line}, column {column}: {message}", file=sys.stderr)
-            return 1
+            return {"exitCode": 1, "diagnostic": f"Line {line}, column {column}: {message}"}
 
         for timer in tree.recursive_crawl("begin_conversation_timer_statement"):
             subquery = next(timer.recursive_crawl("select_statement", "set_expression"), None)
             if subquery is not None:
                 line, column = subquery.pos_marker.source_position()
-                print(f"Line {line}, column {column}: a conversation timer cannot use a subquery.", file=sys.stderr)
-                return 1
+                message = "a conversation timer cannot use a subquery."
+                return {"exitCode": 1, "diagnostic": f"Line {line}, column {column}: {message}"}
 
     if dialect == "sqlite":
         spans = sqlite_preserved_spans(tree, sql)
@@ -430,10 +414,34 @@ def main():
             serialized = serialize(tree, preserved_spans, absorbed_segments)
     else:
         serialized = serialize(tree)
-    print(json.dumps(serialized))
-    return 0
+    return {"exitCode": 0, "tree": serialized}
+
+
+def serve(dialect):
+    # One dialect per process. Extend its grammar once and isolate request limits.
+    config = None
+    for request in sys.stdin.buffer:
+        if config is None:
+            try:
+                config = FluffConfig(overrides={"dialect": dialect, "templater": "raw"})
+            except (KeyError, SQLFluffUserError):
+                reply = {"exitCode": 2, "diagnostic": f"Unsupported SQL dialect: {dialect}"}
+                print(json.dumps(reply), flush=True)
+                return
+            extend_dialect(dialect, config.get("dialect_obj"))
+
+        sql = json.loads(request)
+        print(json.dumps(parse_sql(sql, dialect, config.copy())), flush=True)
+
+
+def main():
+    if sys.argv[1] == "--dialects":
+        print(json.dumps([dialect.label for dialect in dialect_readout()]))
+        return
+
+    serve(sys.argv[2])
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
 

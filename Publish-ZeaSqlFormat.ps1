@@ -64,6 +64,11 @@ if ($LASTEXITCODE -ne 0 -or $installedVersion -ne $sourceInfo.sqlfluff) {
     throw 'The packaged Python runtime could not load the expected SQLFluff version.'
 }
 
+& $bundlePython -I -B -X utf8 -m compileall -q --invalidation-mode checked-hash -s $runtime $packages
+if ($LASTEXITCODE -ne 0) {
+    throw 'Could not compile bytecode for the packaged Python dependencies.'
+}
+
 $publish = Join-Path $work 'publish'
 $artifacts = Join-Path $work 'dotnet'
 dotnet publish $project --configuration Release --artifacts-path $artifacts --output $publish "-p:PortablePythonRoot=$runtime" --nologo
@@ -96,6 +101,12 @@ try {
     $dialects = @(& $exe --dialects)
     if ($LASTEXITCODE -ne 0 -or 'tsql' -notin $dialects -or 'postgres' -notin $dialects) {
         throw 'The standalone EXE could not list its bundled SQLFluff dialects.'
+    }
+
+    $bridge = Get-ChildItem -LiteralPath $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR -Filter SqlFluffBridge.py -File -Recurse
+    $bytecode = Join-Path $bridge.DirectoryName 'python/site-packages/sqlfluff/core/__pycache__/__init__.cpython-313.pyc'
+    if (!(Test-Path -LiteralPath $bytecode -PathType Leaf)) {
+        throw 'The standalone EXE did not contain the compiled SQLFluff bytecode.'
     }
 
     $output = 'select 1::int,2 limit 3' | & $exe --dialect postgres

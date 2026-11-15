@@ -10,6 +10,23 @@ if ($LASTEXITCODE -ne 0) {
 $app = Join-Path $PSScriptRoot 'src/Zea.SqlFormat/bin/Debug/net10.0/Zea.SqlFormat.dll'
 $converter = Join-Path $PSScriptRoot 'src/Zea.SqlLogConvert/bin/Debug/net10.0/Zea.SqlLogConvert.dll'
 
+$python = $env:ZEA_SQLFLUFF_PYTHON ?? 'python'
+$bridge = Join-Path $PSScriptRoot 'src/Zea.SqlFormat/bin/Debug/net10.0/SqlFluffBridge.py'
+$requests = 'select 1', 'select from', 'select 2' | ForEach-Object { ConvertTo-Json -InputObject $_ -Compress }
+$replies = @($requests | & $python -I -B -X utf8 $bridge --serve tsql)
+if ($LASTEXITCODE -ne 0 -or $replies.Count -ne 3) {
+    throw 'Expected three T-SQL parse replies from one Python process.'
+}
+
+$firstReply = $replies[0] | ConvertFrom-Json
+$invalidReply = $replies[1] | ConvertFrom-Json
+$lastReply = $replies[2] | ConvertFrom-Json
+if ($firstReply.exitCode -ne 0 -or $firstReply.tree.kind -ne 'file' -or $replies[0] -notmatch '"text":\s*"1"' -or
+    $invalidReply.exitCode -ne 1 -or !$invalidReply.diagnostic -or
+    $lastReply.exitCode -ne 0 -or $lastReply.tree.kind -ne 'file' -or $replies[2] -notmatch '"text":\s*"2"') {
+    throw "Expected independent parse results, including a SQL error, from one T-SQL bridge process."
+}
+
 function Assert-FormattedSql($actual, $expected, $message) {
     if ($LASTEXITCODE -ne 0 -or ($actual -join "`n").TrimEnd() -cne $expected) {
         throw "$message Exit code: $LASTEXITCODE. Output: $actual"
