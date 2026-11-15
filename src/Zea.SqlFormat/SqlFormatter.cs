@@ -9,6 +9,11 @@ internal static class SqlFormatter
     {
         bool useTsqlFormattingRules = dialect == "tsql";
         var tree = SqlFluffParser.Parse(sql, dialect);
+        if (tree.Kind == "verbatim_sqlite")
+        {
+            return sql;
+        }
+
         Node Reparse(string formatted)
         {
             var parsed = SqlFluffParser.Parse(formatted, dialect);

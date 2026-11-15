@@ -184,7 +184,11 @@ internal sealed partial class SqlFluffTreeAdapter
 
         if (segment.Text != null)
         {
-            if (_useTsqlFormattingRules && context == "output_clause" &&
+            if (context == "table_reference" && segment.Kind == "at_sign")
+            {
+                Add(parent, ENAME_PERIOD, segment.Text);
+            }
+            else if (_useTsqlFormattingRules && context == "output_clause" &&
                 (IsKeyword(segment, "inserted") || IsKeyword(segment, "deleted")))
             {
                 Add(parent, ENAME_OTHERNODE, segment.Text);
@@ -250,10 +254,12 @@ internal sealed partial class SqlFluffTreeAdapter
                 return;
             case "go_statement":
             case "slash_buffer_executor":
+            case "delimiter_statement":
                 var batch = Add(parent, ENAME_BATCH_SEPARATOR);
                 AppendParts(segment, batch, context);
                 return;
             case "begin_end_block":
+            case "compound_statement":
                 AppendBlock(segment, parent);
                 return;
             case "if_then_statement" when _useTsqlFormattingRules:
@@ -284,6 +290,7 @@ internal sealed partial class SqlFluffTreeAdapter
                 }
 
                 return;
+            case "table_reference":
             case "data_type":
             case "function_contents":
             case "bracketed_arguments":
@@ -295,7 +302,11 @@ internal sealed partial class SqlFluffTreeAdapter
             case "bracketed":
                 AppendBrackets(segment, parent, context);
                 return;
-            case "binary_operator" when _useTsqlFormattingRules:
+            case "numeric_literal" when !_useTsqlFormattingRules && segment.Parts.Count == 2 &&
+                segment.Parts[0].Kind is "sign_indicator" or "dot" && segment.Parts[1].Kind == "numeric_literal":
+                Add(parent, ENAME_OTHERNODE, segment.Raw());
+                return;
+            case "binary_operator":
             case "comparison_operator":
             case "assignment_operator":
                 var operatorText = segment.Raw();
@@ -306,6 +317,13 @@ internal sealed partial class SqlFluffTreeAdapter
                 }
 
                 break;
+            case "pattern_expression":
+                // Row-pattern quantifiers have their own punctuation rules.
+                Add(parent, ENAME_OTHERNODE, segment.Raw());
+                return;
+            case "plsql_label":
+                Add(parent, ENAME_LABEL, segment.Raw());
+                return;
             case "case_expression":
                 AppendCase(segment, parent);
                 return;
@@ -1092,14 +1110,14 @@ internal sealed partial class SqlFluffTreeAdapter
             case "statement_terminator":
             case "semicolon":
                 name = ENAME_SEMICOLON;
-                if (_useTsqlFormattingRules && parent.Name == ENAME_SQL_ROOT)
+                if (parent.Name == ENAME_SQL_ROOT)
                 {
                     var trailingClause = LastStatementClause(parent);
                     if (trailingClause != null)
                     {
                         parent = trailingClause.Parent!;
                     }
-                    else if (!parent.Children.Any(child => child.Name == ENAME_SQL_STATEMENT))
+                    else if (_useTsqlFormattingRules && !parent.Children.Any(child => child.Name == ENAME_SQL_STATEMENT))
                     {
                         parent = Add(Add(parent, ENAME_SQL_STATEMENT), ENAME_SQL_CLAUSE);
                     }

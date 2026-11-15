@@ -144,11 +144,18 @@ Assert-FormattedSql $oracle (@('BEGIN', '    NULL;', 'END;', '/') -join [char]10
 $oracle = "select q'[hi]' as t, :param from dual;" | dotnet $app --dialect oracle
 Assert-FormattedSql $oracle (@("SELECT q'[hi]' AS t", '    ,:param', 'FROM dual;') -join [char]10) 'Expected the Oracle literal and bind variable to preserve their spelling.'
 
+$oracle = 'SELECT .5 + .2, a-.2 FROM dual;' | dotnet $app --dialect oracle
+Assert-FormattedSql $oracle (@('SELECT .5 + .2', '    ,a - .2', 'FROM dual;') -join [char]10) 'Expected Oracle decimals with an omitted leading zero to remain atomic.'
+
 $sqlite = 'insert into t(id) values (?) on conflict(id) do nothing returning id;' | dotnet $app --dialect sqlite
 Assert-FormattedSql $sqlite (@('INSERT INTO t (id)', 'VALUES (?)', 'ON CONFLICT (id) DO NOTHING', 'RETURNING id;') -join [char]10) 'Expected SQLite conflict and returning clauses on separate lines.'
 
 $postgres = 'select a[1], arr[2][3] from t' | dotnet $app --dialect postgres
 Assert-FormattedSql $postgres (@('SELECT a[1]', '    ,arr[2][3]', 'FROM t') -join [char]10) 'Expected PostgreSQL array accessors to stay adjacent.'
+
+$postgresComment = (@('/* Report ;', '   /* nested */ Keep spacing. */', 'select 1;') -join [char]10)
+$postgres = $postgresComment | dotnet $app --dialect postgres
+Assert-FormattedSql $postgres (@('/* Report ;', '   /* nested */ Keep spacing. */', 'SELECT 1;') -join [char]10) 'Expected PostgreSQL multiline and nested comments to retain their text and indentation.'
 
 $continuedLiteral = (@("select concat('a'", "'b'), 'c'", "'d' as cd") -join [char]10) | dotnet $app --dialect postgres
 Assert-FormattedSql $continuedLiteral (@("SELECT concat('a'", "'b')", "    ,'c'", "'d' AS cd") -join [char]10) 'Expected newlines between continued PostgreSQL string literals.'
@@ -243,5 +250,39 @@ Assert-FormattedSql $concat "SELECT 'a' || 'b';" 'Expected the T-SQL string conc
 
 $emptyRegion = 'SELECT 1 /* [noformat] *//* [/noformat] */ FROM tab;' | dotnet $app --dialect tsql
 Assert-FormattedSql $emptyRegion (@('SELECT 1 /* [noformat] */ /* [/noformat] */', 'FROM tab;') -join [char]10) 'Expected Right Way spacing for an empty inline format region.'
+
+$postgresWithLimit = @'
+with orders(customer_id,amount,status) as (values (1,120,'paid'),(1,80,'new'),(2,90,'paid'),(2,140,'paid'),(3,60,'paid')), summary as (select customer_id,sum(amount) filter (where status='paid') as paid_total from orders group by customer_id) select r.customer_id,r.paid_total::numeric(10,2) as paid_total,r.customer_rank from (select s.*,dense_rank() over(order by s.paid_total desc) as customer_rank from summary s where exists (select 1 from orders o where o.customer_id=s.customer_id and o.amount>(select avg(x.amount) from orders x where x.status='paid'))) r where r.customer_rank<=3 order by r.customer_rank,r.customer_id limit 5;
+'@
+$postgresResult = $postgresWithLimit | dotnet $app --dialect postgresql
+if ($LASTEXITCODE -ne 0 -or $postgresResult[-1] -cne 'LIMIT 5;') {
+    throw 'Expected the nested PostgreSQL query to retain its LIMIT clause.'
+}
+
+$tsqlResult = $postgresWithLimit | dotnet $app --dialect tsql 2>&1
+if ($LASTEXITCODE -ne 1 -or ($tsqlResult -join ' ') -notmatch 'EXECUTE' -or
+    @($tsqlResult | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] }).Count -ne 0) {
+    throw 'Expected T-SQL to reject the nested PostgreSQL query without emitting SQL.'
+}
+
+$validProcedureCalls = @(
+    'dbo.p 1; SELECT 2;'
+    (@('SELECT 1;', 'GO', '-- first in the next batch', 'dbo.p 2;') -join [char]10)
+    'SELECT 1; EXEC dbo.p 2;'
+    'BEGIN EXECUTE dbo.p 3; END;'
+)
+foreach ($call in $validProcedureCalls) {
+    $formattedCall = $call | dotnet $app --dialect tsql
+    if ($LASTEXITCODE -ne 0 -or !$formattedCall) {
+        throw "Expected a valid procedure call to format. Input: $call"
+    }
+}
+
+foreach ($call in 'SELECT 1; dbo.p 2;', 'BEGIN dbo.p 2; END;') {
+    $rejectedCall = $call | dotnet $app --dialect tsql 2>&1
+    if ($LASTEXITCODE -ne 1 -or ($rejectedCall -join ' ') -notmatch 'EXECUTE') {
+        throw "Expected an implicit procedure call outside the start of a batch to be rejected. Input: $call"
+    }
+}
 
 Write-Output 'Passed SQL formatting CLI checks for SQL Server, PostgreSQL, MySQL, Oracle and SQLite.'

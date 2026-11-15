@@ -8889,3 +8889,17 @@ select 1 as a where (1=1;
 -- zea-case: invalid/08
 merge dbo.a using dbo.b on dbo.a.id=dbo.b.id when matched then;
 
+-- zea-case: comments/multiline-indented
+-- zea-expect: ["/* Report ;", "   Second line -- literal.", "   Last line. */", "SELECT 1;"]
+/* Report ;
+   Second line -- literal.
+   Last line. */
+select 1;
+
+-- zea-case: comments/multiline-nested
+-- zea-expect: ["/* Outer ;", "   /* Inner ; */", "   Outer again. */", "SELECT 1;"]
+/* Outer ;
+   /* Inner ; */
+   Outer again. */
+select 1;
+

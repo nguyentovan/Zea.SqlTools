@@ -47,6 +47,17 @@ dotnet $app --dialects
 
 The integration tests cover T-SQL, PostgreSQL, MySQL, Oracle and SQLite. Other labels can be discovered with `--dialects`. Formatting coverage depends on how Right Way handles the SQLFluff parse tree for the constructs in the input.
 
+## Run the dialect corpora
+
+Run this command from the repository root after publishing the portable formatter.
+
+    ./obj/sqlfluff-venv/Scripts/python.exe -B tests/run_sql_dialect_corpora.py obj/portable/win-x64/Zea.SqlFormat.exe
+
+Each SQL file contains independent cases. The runner compares manually specified
+layouts, formats successful output again, and checks dialect-specific syntax
+against the other dialects. The JSON report lists every discrepancy and the
+command exits with code 1 when a check fails.
+
 ## Third-party attribution
 
 Zea vendors the core library from [Right Way SQL Formatter](https://github.com/BadMonkeySoftware/right-way-sql-formatter), based on Poor Man's T-SQL Formatter by Tao Klerks. The vendored files retain their original notices and are licensed under the [GNU Affero General Public License v3](Formatters/RightWay/LICENSE.txt).
