@@ -103,6 +103,7 @@ select a.id,a.name,a.amount from dbo.accounts a where a.id=9;
  where a.id=10;
 
 -- zea-case: select/04-01
+-- zea-expect: ["SELECT DISTINCT TOP (2) a.category", "FROM dbo.accounts AS a", "ORDER BY a.category;"]
 select distinct top (2) a.category from dbo.accounts as a order by a.category;
 
 -- zea-case: select/04-02
@@ -208,6 +209,7 @@ select a.id, (a.amount+9)*29 as adjusted, -9 as negative, ~29 as flipped from db
   from dbo.accounts a;
 
 -- zea-case: select/07-01
+-- zea-expect: ["SELECT [weird]]name]", "    ,[space name]", "    ,\"QuotedName\"", "FROM [Odd Schema].[Odd Table]", "WHERE id = 2;"]
 select [weird]]name], [space name], "QuotedName" from [Odd Schema].[Odd Table] where id=2;
 
 -- zea-case: select/07-02
@@ -288,6 +290,7 @@ select a.id into #picked_11 from dbo.accounts a where a.amount>35;
  where a.amount>38;
 
 -- zea-case: select/09-01
+-- zea-expect: ["SELECT id", "FROM dbo.accounts", "ORDER BY id OFFSET 1 ROWS", "", "FETCH NEXT 5 ROWS ONLY;"]
 select id from dbo.accounts order by id offset 1 rows fetch next 5 rows only;
 
 -- zea-case: select/09-02
@@ -330,6 +333,7 @@ select id, score from dbo.accounts order by score desc, id asc;
   from dbo.accounts order by score desc, id asc;
 
 -- zea-case: literals/01-01
+-- zea-expect: ["SELECT N'Hà Nội 2; -- Việt Nam'", "    ,'O''Brien'", "    ,N'東京'", "    ,N'🧪'", "    ,'';"]
 select N'Hà Nội 2; -- Việt Nam', 'O''Brien', N'東京', N'🧪', '';
 
 -- zea-case: literals/01-02
@@ -620,6 +624,7 @@ select 9 /* outer /* nested */ outer */, 29;
   select 10 /* outer /* nested */ outer */, 32;
 
 -- zea-case: comments/04-01
+-- zea-expect: ["SELECT a.id", "FROM dbo.a a", "LEFT JOIN /* 2 */ dbo.b b ON a.id = b.id;"]
 select a.id from dbo.a a left outer /* 2 */ join dbo.b b on a.id=b.id;
 
 -- zea-case: comments/04-02
@@ -800,6 +805,7 @@ select id from dbo.a where x not in (11,35,44) and y in (select id from dbo.b);
   from dbo.b);
 
 -- zea-case: predicates/03-01
+-- zea-expect: ["SELECT id", "FROM dbo.a", "WHERE EXISTS (", "        SELECT 1", "        FROM dbo.b", "        WHERE a.id = b.id", "            AND b.code = 1", "        );"]
 select id from dbo.a where exists (select 1 from dbo.b where a.id=b.id and b.code=1);
 
 -- zea-case: predicates/03-02
@@ -1130,6 +1136,7 @@ select * from dbo.a cross join dbo.b where a.id=10;
  where a.id=11;
 
 -- zea-case: joins/05-01
+-- zea-expect: ["SELECT a.id", "    ,q.y", "FROM dbo.a a", "OUTER APPLY (", "    SELECT TOP (3) b.y", "    FROM dbo.b b", "    WHERE b.aid = a.id", "    ORDER BY b.y DESC", "    ) q;"]
 select a.id,q.y from dbo.a a outer apply (select top (3) b.y from dbo.b b where b.aid=a.id order by b.y desc) q;
 
 -- zea-case: joins/05-02
@@ -1210,6 +1217,7 @@ select a.id,q.n from dbo.a a cross apply (values(a.id+9)) as q(n);
   from dbo.a a cross apply (values(a.id+10)) as q(n);
 
 -- zea-case: joins/07-01
+-- zea-expect: ["SELECT a.id", "FROM dbo.a a", "INNER HASH JOIN dbo.b b ON a.id = b.id", "OPTION (MAXDOP 2);"]
 select a.id from dbo.a a inner hash join dbo.b b on a.id=b.id option (maxdop 2);
 
 -- zea-case: joins/07-02
@@ -1355,6 +1363,7 @@ select region,product,sum(amount) from dbo.sales group by rollup(region,product)
   from dbo.sales group by rollup(region,product) having count(*)>12;
 
 -- zea-case: aggregates/03-01
+-- zea-expect: ["SELECT region", "    ,product", "    ,SUM(amount)", "FROM dbo.sales", "GROUP BY GROUPING sets((", "            region", "            ,product", "            ), (region), ())", "HAVING SUM(amount) > 1;"]
 select region,product,sum(amount) from dbo.sales group by grouping sets((region,product),(region),()) having sum(amount)>1;
 
 -- zea-case: aggregates/03-02
@@ -1390,6 +1399,7 @@ select region,product,sum(amount) from dbo.sales group by grouping sets((region,
   from dbo.sales group by grouping sets((region,product),(region),()) having sum(amount)>10;
 
 -- zea-case: aggregates/04-01
+-- zea-expect: ["SELECT id", "    ,SUM(amount) OVER (", "        PARTITION BY grp ORDER BY id ROWS BETWEEN 2 preceding", "                AND CURRENT row", "        ) AS running", "FROM dbo.sales;"]
 select id, sum(amount) over(partition by grp order by id rows between 2 preceding and current row) as running from dbo.sales;
 
 -- zea-case: aggregates/04-02
@@ -1605,6 +1615,7 @@ select id from dbo.a where id>10 union all select id from dbo.b intersect select
   from y;
 
 -- zea-case: set_cte_case/03-01
+-- zea-expect: [";", "", "WITH nums (n)", "AS (", "    SELECT 1", "    ", "    UNION ALL", "    ", "    SELECT n + 1", "    FROM nums", "    WHERE n < 14", "    )", "SELECT n", "FROM nums", "OPTION (MAXRECURSION 100);"]
 ;with nums(n) as (select 1 union all select n+1 from nums where n<14) select n from nums option(maxrecursion 100);
 
 -- zea-case: set_cte_case/03-02
@@ -1835,6 +1846,7 @@ insert dbo.b(id,k) output inserted.id select a.id,a.k from dbo.a a where a.id>11
  where a.id>12;
 
 -- zea-case: dml/03-01
+-- zea-expect: ["UPDATE a", "SET amount = amount + 1", "    ,k = 5", "OUTPUT inserted.id", "    ,deleted.amount", "FROM dbo.a a", "INNER JOIN dbo.b b ON a.id = b.id", "WHERE b.flag = 1;"]
 update a set amount=amount+1, k=5 output inserted.id, deleted.amount from dbo.a a join dbo.b b on a.id=b.id where b.flag=1;
 
 -- zea-case: dml/03-02
@@ -1915,6 +1927,7 @@ delete a output deleted.id from dbo.a a join dbo.b b on b.id=a.id where a.id<10;
  where a.id<11;
 
 -- zea-case: dml/05-01
+-- zea-expect: ["MERGE dbo.target AS t", "USING dbo.source AS s", "    ON t.id = s.id", "WHEN MATCHED", "    AND s.flag = 3", "    THEN", "        UPDATE", "        SET t.name = s.name", "WHEN NOT MATCHED", "    THEN", "        INSERT (", "            id", "            ,name", "            )", "        VALUES (", "            s.id", "            ,s.name", "            )", "OUTPUT $ACTION", "    ,inserted.id;"]
 merge dbo.target as t using dbo.source as s on t.id=s.id when matched and s.flag=3 then update set t.name=s.name when not matched then insert(id,name) values(s.id,s.name) output $action, inserted.id;
 
 -- zea-case: dml/05-02
@@ -1985,6 +1998,7 @@ with t as (select top (9) id from dbo.queue order by id) delete from t;
   from t;
 
 -- zea-case: ddl/01-01
+-- zea-expect: ["CREATE TABLE dbo.T_2 (", "    id INT IDENTITY(1, 1) NOT NULL PRIMARY KEY", "    ,label NVARCHAR(200) NULL", "    ,amount DECIMAL(12, 2) DEFAULT(8)", "    ,CHECK (amount >= 0)", "    );"]
 create table dbo.T_2(id int identity(1,1) not null primary key, label nvarchar(200) null, amount decimal(12,2) default (8), check(amount>=0));
 
 -- zea-case: ddl/01-02
@@ -2240,6 +2254,7 @@ declare @i int=10, @j int=32; set @i += @j; select @i, @j;
   declare @i int=11, @j int=35; set @i += @j; select @i, @j;
 
 -- zea-case: procedural/02-01
+-- zea-expect: ["IF 3 = 11", "    SELECT 1;", "ELSE IF 3 < 20", "BEGIN", "    SELECT 3;", "END", "ELSE", "    SELECT 0;"]
 if 3=11 select 1; else if 3<20 begin select 3; end else select 0;
 
 -- zea-case: procedural/02-02
@@ -2620,6 +2635,7 @@ select x.id,t.tag from dbo.items x unpivot (val for tag in (a,b,c)) t where t.id
  where t.id>12;
 
 -- zea-case: advanced/03-01
+-- zea-expect: ["SELECT a.id", "    ,j.code", "FROM dbo.a a", "CROSS APPLY OPENJSON(a.payload) WITH (code NVARCHAR(30) '$.code') AS j", "WHERE a.id > 1;"]
 select a.id,j.code from dbo.a a cross apply openjson(a.payload) with(code nvarchar(30) '$.code') as j where a.id>1;
 
 -- zea-case: advanced/03-02
@@ -2700,6 +2716,7 @@ select id,json_value(payload,'$.x') as x from dbo.a where id>10 for json path, i
  where id>11 for json path, include_null_values;
 
 -- zea-case: advanced/05-01
+-- zea-expect: ["WITH xmlnamespaces (DEFAULT 'urn:sample')", "SELECT id", "FROM dbo.a", "WHERE id > 3", "FOR XML path('item')", "    ,root('root')", "    ,type;"]
 with xmlnamespaces(default 'urn:sample') select id from dbo.a where id>3 for xml path('item'),root('root'),type;
 
 -- zea-case: advanced/05-02
@@ -8903,3 +8920,43 @@ select 1;
    Outer again. */
 select 1;
 
+
+-- zea-case: format-regions/noformat-block
+-- zea-expect: ["SELECT 1 + /* [noformat] */ 2  +  3 /* [/noformat] */","    ,4;"]
+select 1  + /* [noformat] */ 2  +  3 /* [/noformat] */, 4;
+
+-- zea-case: format-regions/noformat-line
+-- zea-expect: ["SELECT 1","    ,","    -- [noformat]","2   +  3,","-- [/noformat]","    4;"]
+select 1,
+-- [noformat]
+2   +  3,
+-- [/noformat]
+4;
+
+-- zea-case: format-regions/noformat-eof
+-- zea-expect: ["SELECT 1","    ,","    -- [noformat]","2   +  3, 4;"]
+select 1,
+-- [noformat]
+2   +  3, 4;
+
+-- zea-case: format-regions/minify-block
+-- zea-expect: ["SELECT 1 + /* [minify] */2+3/* [/minify] */","    ,4;"]
+select 1  + /* [minify] */ 2  +  3 /* [/minify] */, 4;
+
+-- zea-case: format-regions/minify-line
+-- zea-expect: ["SELECT 1","    ,","    -- [minify]","2+3,","    -- [/minify]","    4;"]
+select 1,
+-- [minify]
+2   +  3,
+-- [/minify]
+4;
+
+-- zea-case: format-regions/minify-eof
+-- zea-expect: ["SELECT 1","    ,","    -- [minify]","2+3,4;"]
+select 1,
+-- [minify]
+2   +  3, 4;
+
+-- zea-case: format-regions/minify-wrap
+-- zea-expect: ["SELECT /* [minify] */column_name_abcdefghij+column_name_klmnopqrst+column_name_uvwxyzabcd+","column_name_efghijklmn/* [/minify] */;"]
+select /* [minify] */ column_name_abcdefghij + column_name_klmnopqrst + column_name_uvwxyzabcd + column_name_efghijklmn /* [/minify] */;
