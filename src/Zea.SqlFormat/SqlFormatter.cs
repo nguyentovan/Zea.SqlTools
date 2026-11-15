@@ -1,23 +1,33 @@
-using Zea.SqlFormat.Formatters.TSql;
+using Zea.SqlFormat.Formatters.RightWay;
+using Zea.SqlFormat.Formatters.RightWay.ParseStructure;
 
 namespace Zea.SqlFormat;
 
 internal static class SqlFormatter
 {
-    public static string FormatSql(string sql, SqlDialect dialect)
+    public static string FormatSql(string sql, string dialect)
     {
-        if (string.IsNullOrWhiteSpace(sql))
+        bool useTsqlFormattingRules = dialect == "tsql";
+        var tree = SqlFluffParser.Parse(sql, dialect);
+        Node Reparse(string formatted)
         {
-            throw new FormatException("Input does not contain any SQL.");
+            var parsed = SqlFluffParser.Parse(formatted, dialect);
+            var converted = SqlFluffTreeAdapter.Convert(parsed, useTsqlFormattingRules);
+            return converted;
         }
 
-        switch (dialect)
+        var options = new RightWayFormatterOptions();
+        options.KeywordStandardization = useTsqlFormattingRules;
+        var formatter = new RightWayFormatter(options);
+        var sqlTree = SqlFluffTreeAdapter.Convert(tree, useTsqlFormattingRules);
+        var result = formatter.FormatSQLTree(sqlTree, Reparse);
+
+        if (!string.Equals(sql, result, StringComparison.Ordinal))
         {
-            case SqlDialect.TSql:
-                var formattedSql = TSqlFormatter.FormatSql(sql);
-                return formattedSql;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(dialect), dialect, "Unsupported SQL dialect.");
+            var reparsed = SqlFluffParser.Parse(result, dialect);
+            SqlFluffTreeAdapter.CheckEquivalent(tree, reparsed, useTsqlFormattingRules);
         }
+
+        return result;
     }
 }

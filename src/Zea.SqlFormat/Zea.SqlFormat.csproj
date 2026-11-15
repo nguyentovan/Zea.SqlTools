@@ -7,4 +7,24 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(PortablePythonRoot)' != ''">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+    <DefineConstants>$(DefineConstants);ZEA_PORTABLE_PYTHON</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(PortablePythonRoot)' != ''">
+    <Content Include="$(PortablePythonRoot)\**\*" LinkBase="python" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="Formatters/RightWay/LICENSE.txt" TargetPath="licenses/RightWay.txt" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="SqlFluffBridge.py" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="SqlFluffTsqlStatements.py" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
