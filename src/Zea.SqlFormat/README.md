@@ -26,8 +26,8 @@ the Python environment above, then run:
 
 The script packages the Python embeddable runtime and the installed
 SQLFluff environment. Copy `obj/portable/win-x64/Zea.SqlFormat.exe` to
-the target Windows x64 machine. The EXE contains .NET, Python and SQLFluff
-and extracts its runtime files into a user-writable cache at launch.
+a Windows x64 machine with the [.NET 10 Runtime (x64)](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed.
+The EXE bundles Python and SQLFluff and extracts them into a user-writable cache at launch.
 Use `-PythonEnvironment` when the build environment is located elsewhere.
 
 ```powershell

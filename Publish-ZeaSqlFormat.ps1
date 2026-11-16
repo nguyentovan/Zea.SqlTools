@@ -81,8 +81,8 @@ if ($items.Count -ne 1 -or $items[0].Name -ne 'Zea.SqlFormat.exe') {
     throw 'Expected the publish directory to contain only Zea.SqlFormat.exe.'
 }
 
-# Run from a clean bundle cache and a PATH without Python or .NET.
-$variables = @('Path', 'ZEA_SQLFLUFF_PYTHON', 'PYTHONHOME', 'PYTHONPATH', 'DOTNET_ROOT', 'DOTNET_BUNDLE_EXTRACT_BASE_DIR')
+# Use the installed .NET runtime and test bundled Python from a clean cache.
+$variables = @('Path', 'ZEA_SQLFLUFF_PYTHON', 'PYTHONHOME', 'PYTHONPATH', 'DOTNET_BUNDLE_EXTRACT_BASE_DIR')
 $saved = @{}
 foreach ($name in $variables) {
     $saved[$name] = [Environment]::GetEnvironmentVariable($name)
@@ -94,7 +94,6 @@ try {
     $env:ZEA_SQLFLUFF_PYTHON = Join-Path $empty 'python.exe'
     $env:PYTHONHOME = $empty
     $env:PYTHONPATH = $empty
-    $env:DOTNET_ROOT = $empty
     $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR = Join-Path $work 'test-extraction'
 
     $exe = $items[0].FullName
@@ -104,6 +103,9 @@ try {
     }
 
     $bridge = Get-ChildItem -LiteralPath $env:DOTNET_BUNDLE_EXTRACT_BASE_DIR -Filter SqlFluffBridge.py -File -Recurse
+    if (Test-Path -LiteralPath (Join-Path $bridge.DirectoryName 'System.Private.CoreLib.dll')) {
+        throw 'Zea.SqlFormat.exe must use the installed .NET runtime.'
+    }
     $bytecode = Join-Path $bridge.DirectoryName 'python/site-packages/sqlfluff/core/__pycache__/__init__.cpython-313.pyc'
     if (!(Test-Path -LiteralPath $bytecode -PathType Leaf)) {
         throw 'The standalone EXE did not contain the compiled SQLFluff bytecode.'

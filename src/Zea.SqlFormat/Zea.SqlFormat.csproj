@@ -9,10 +9,9 @@
 
   <PropertyGroup Condition="'$(PortablePythonRoot)' != ''">
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <SelfContained>true</SelfContained>
+    <SelfContained>false</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
     <DebugType>embedded</DebugType>
     <DefineConstants>$(DefineConstants);ZEA_PORTABLE_PYTHON</DefineConstants>
   </PropertyGroup>
