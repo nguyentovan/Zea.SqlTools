@@ -15,12 +15,39 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CORPORA = {
+# Preserve the cross-dialect matrix for the original five corpora.
+BOUNDARY_CORPORA = {
     "tsql": "TsqlFormattingCorpus.sql",
     "postgres": "PostgreSqlFormattingCorpus.sql",
     "mysql": "MySqlFormattingCorpus.sql",
     "oracle": "OracleFormattingCorpus.sql",
     "sqlite": "SqliteFormattingCorpus.sql",
+}
+CORPORA = {
+    **BOUNDARY_CORPORA,
+    "ansi": "AnsiFormattingCorpus.sql",
+    "athena": "AthenaFormattingCorpus.sql",
+    "bigquery": "BigQueryFormattingCorpus.sql",
+    "clickhouse": "ClickHouseFormattingCorpus.sql",
+    "databricks": "DatabricksFormattingCorpus.sql",
+    "db2": "Db2FormattingCorpus.sql",
+    "doris": "DorisFormattingCorpus.sql",
+    "duckdb": "DuckDbFormattingCorpus.sql",
+    "exasol": "ExasolFormattingCorpus.sql",
+    "flink": "FlinkFormattingCorpus.sql",
+    "greenplum": "GreenplumFormattingCorpus.sql",
+    "hive": "HiveFormattingCorpus.sql",
+    "impala": "ImpalaFormattingCorpus.sql",
+    "mariadb": "MariaDbFormattingCorpus.sql",
+    "materialize": "MaterializeFormattingCorpus.sql",
+    "redshift": "RedshiftFormattingCorpus.sql",
+    "snowflake": "SnowflakeFormattingCorpus.sql",
+    "soql": "SoqlFormattingCorpus.sql",
+    "sparksql": "SparkSqlFormattingCorpus.sql",
+    "starrocks": "StarRocksFormattingCorpus.sql",
+    "teradata": "TeradataFormattingCorpus.sql",
+    "trino": "TrinoFormattingCorpus.sql",
+    "vertica": "VerticaFormattingCorpus.sql",
 }
 TSQL_EXCLUSIVE = {
     "advanced/09-01", "advanced/10-01", "ddl/03-01", "dml/02-01",
@@ -145,9 +172,9 @@ def main():
         if case.dialect != "tsql" or case.exclusive or case.expected_lines is not None:
             jobs.append((case, case.dialect, "reject" if case.name.startswith("invalid/") else "own"))
         if case.exclusive:
-            jobs.extend((case, dialect, "reject") for dialect in CORPORA if dialect != case.dialect)
+            jobs.extend((case, dialect, "reject") for dialect in BOUNDARY_CORPORA if dialect != case.dialect)
         if case.dialect == "tsql" and case.name in SHARED:
-            jobs.extend((case, dialect, "shared") for dialect in CORPORA)
+            jobs.extend((case, dialect, "shared") for dialect in BOUNDARY_CORPORA)
 
     results = []
     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 4)) as pool:

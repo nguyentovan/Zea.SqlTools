@@ -43,7 +43,12 @@ select date '2024-02-29',timestamp '2024-02-29 13:14:15.123456',interval '2-03' 
 select +.5,-0.25,1.2e-3,6.02E+23,123456789012345678901234567890 from dual;
 
 -- zea-case: literals/national-character
+-- zea-expect: ["SELECT N'cà phê' label","    ,'It''s SQL' escaped_literal","    ,unistr('\\00E9') accent","FROM dual;"]
 select N'cà phê' label,'It''s SQL' escaped_literal,unistr('\00E9') accent from dual;
+
+-- zea-case: literals/national-character-escaped
+-- zea-expect: ["SELECT n'it''s café' AS label","    ,N'cà phê' AS drink","    ,nq'[l'été]' AS alternative","FROM dual;"]
+select n'it''s café' as label,N'cà phê' as drink,nq'[l'été]' as alternative from dual;
 
 -- zea-case: literals/bind-variables
 select id,name from customers where id=:customer_id and tenant_id=:tenant_id;

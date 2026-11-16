@@ -9,7 +9,9 @@ from pathlib import Path
 from sqlfluff.core import FluffConfig, SQLFluffUserError
 from sqlfluff.core.dialects import dialect_readout
 from sqlfluff.core.errors import SQLParseError
-from sqlfluff.core.parser import Lexer, Nothing, Parser, Ref, RegexLexer, Sequence
+from sqlfluff.core.parser import (
+    CodeSegment, Lexer, LiteralSegment, Nothing, Parser, Ref, RegexLexer, Sequence, TypedParser,
+)
 
 
 def keep_block_comments_together(dialect):
@@ -152,6 +154,22 @@ def apply_extension(dialect, filename, entrypoint):
 
 
 def extend_oracle(dialect):
+    # Lex the national character prefix together with its string literal.
+    national_quote = r"[nN]'((?:[^']|'')*)'(?!')"
+    dialect.insert_lexer_matchers([
+        RegexLexer(
+            "single_quote_with_n", national_quote, CodeSegment,
+            segment_kwargs={
+                "quoted_value": (national_quote, 1),
+                "escape_replacements": [(r"''", "'")],
+            },
+        ),
+    ], before="word")
+    quoted_literal = dialect.get_grammar("QuotedLiteralSegment")
+    dialect.replace(QuotedLiteralSegment=quoted_literal.copy(
+        insert=[TypedParser("single_quote_with_n", LiteralSegment, type="quoted_literal")],
+    ))
+
     # PL/SQL retains its own statement grammar for procedure calls.
     original = dialect.get_segment("StatementSegment")
 
@@ -290,12 +308,15 @@ def sqlite_preserved_spans(tree, sql):
 def serialize(segment, preserved_spans=None, absorbed_segments=frozenset()):
     if preserved_spans and id(segment) in preserved_spans:
         return {"kind": "sqlite_preserved_text", "text": preserved_spans[id(segment)]}
+    kind = segment.get_type()
+    if kind == "date_n_literal":
+        # SOQL requires the keyword, colon, and count to stay adjacent.
+        return {"kind": kind, "text": segment.raw}
     children = [
         serialize(child, preserved_spans, absorbed_segments)
         for child in segment.segments
         if not child.is_meta and (not absorbed_segments or id(child) not in absorbed_segments)
     ]
-    kind = segment.get_type()
     if children:
         return {"kind": kind, "children": children}
     text = segment.raw

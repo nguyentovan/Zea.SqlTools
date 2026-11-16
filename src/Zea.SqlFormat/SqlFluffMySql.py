@@ -3,10 +3,12 @@
 from sqlfluff.core.parser import (
     BaseSegment,
     Bracketed,
+    CodeSegment,
     Delimited,
     OneOf,
     OptionallyBracketed,
     Ref,
+    RegexLexer,
     Sequence,
 )
 
@@ -258,6 +260,17 @@ def _extend_statements(dialect):
 
 
 def extend_mysql(dialect):
+    # MySQL doubles a backtick inside a delimited identifier.
+    quoted_identifier = r"`((?:[^`\x00]|``)*)`(?!`)"
+    dialect.patch_lexer_matchers([
+        RegexLexer(
+            "back_quote", quoted_identifier, CodeSegment,
+            segment_kwargs={
+                "quoted_value": (quoted_identifier, 1),
+                "escape_replacements": [(r"``", "`")],
+            },
+        ),
+    ])
     _extend_queries(dialect)
     _extend_statements(dialect)
     _extend_create_table(dialect)

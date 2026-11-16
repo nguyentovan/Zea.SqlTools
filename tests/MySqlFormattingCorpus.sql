@@ -172,7 +172,12 @@ WITH `summary` (`key`, `value`) AS (SELECT source_key, source_value FROM source_
 SELECT `key`, `value` FROM `summary`;
 
 -- zea-case: literal/escaped-identifier
+-- zea-expect: ["SELECT `has space`","    ,`contains``tick`","FROM `select`;"]
 SELECT `has space`, `contains``tick` FROM `select`;
+
+-- zea-case: literal/escaped-identifier-aliases
+-- zea-expect: ["SELECT 1 AS `a``b```","    ,2 AS `path\\`","    ,3 AS `contains````two`;"]
+select 1 as `a``b```, 2 as `path\`, 3 as `contains````two`;
 
 -- zea-case: literal/doubled-quotes
 SELECT 'O''Brien', 'This ; is content', '/* keep */';
